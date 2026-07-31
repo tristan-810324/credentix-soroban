@@ -25,15 +25,6 @@
     async function getFreighter() {
       if (window.freighterApi) return window.freighterApi;
       if (window.freighter) return window.freighter;
-      if (window.StellarFreighter) return window.StellarFreighter;
-      
-      // Pinatibay na hintay para masigurong ma-detect ang extension
-      for (let i = 0; i < 15; i++) {
-        if (window.freighterApi) return window.freighterApi;
-        if (window.freighter) return window.freighter;
-        if (window.StellarFreighter) return window.StellarFreighter;
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
       return null;
     }
   </script>
@@ -114,18 +105,18 @@
     walletBtn.addEventListener('click', async () => {
       try {
         walletText.innerText = "Connecting...";
-        const freighter = await getFreighter();
+        let freighterModule = window.freighterApi || await getFreighter();
         
-        if (!freighter) {
-          throw new Error("Freighter extension not detected. Please install or unlock Freighter.");
+        if (!freighterModule) {
+          throw new Error("Freighter extension not detected. Please make sure it is unlocked.");
         }
 
-        const isConnected = await freighter.isConnected();
+        const isConnected = await freighterModule.isConnected();
         if (!isConnected) {
-          await freighter.requestAccess();
+          await freighterModule.requestAccess();
         }
 
-        userPublicKey = await freighter.getAddress();
+        userPublicKey = await freighterModule.getAddress();
         
         if (userPublicKey) {
           walletInput.value = userPublicKey;
@@ -141,27 +132,27 @@
       }
     });
 
-    const CONTRACT_ID = "CCRTH6FEEOKFPUPEURQLBD4MUUSRHRCGJXDGB5LBLRIQXUPVYPHYXQ7D"; //
+    const CONTRACT_ID = "CCRTH6FEEOKFPUPEURQLBD4MUUSRHRCGJXDGB5LBLRIQXUPVYPHYXQ7D";
     const NETWORK_PASSPHRASE = "Test SDF Network ; September 2015";
     const RPC_URL = "https://soroban-testnet.stellar.org";
 
     certForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!userPublicKey) {
-        showStatus("Wallet Error", "Error 1 (Unauthorized): Please connect your Freighter wallet first.", "error");
+        showStatus("Wallet Error", "Please connect your Freighter wallet first.", "error");
         return;
       }
       
       const score = parseInt(document.getElementById('scoreInput').value);
       if (isNaN(score) || score < 0 || score > 100) {
-        showStatus("Validation Error", "Error 2 (InvalidScore): Score must be between 0 and 100.", "error");
+        showStatus("Validation Error", "Score must be between 0 and 100.", "error");
         return;
       }
 
       try {
         submitBtn.disabled = true;
-        submitBtn.innerText = "Signing & Submitting to Testnet...";
-        showStatus("Transaction Pending", "Pumapasok na sa Soroban Testnet ledger ang iyong transaksyon...", "pending");
+        submitBtn.innerText = "Signing & Submitting...";
+        showStatus("Transaction Pending", "Pumapasok na sa Soroban Testnet...", "pending");
 
         const server = new StellarSdk.SorobanRpc.Server(RPC_URL);
         const sourceAccount = await server.getAccount(userPublicKey);
@@ -180,8 +171,8 @@
         .setTimeout(30)
         .build();
 
-        const freighter = await getFreighter();
-        const signedTxXdr = await freighter.signTransaction(tx.toXDR(), {
+        const freighterModule = window.freighterApi || await getFreighter();
+        const signedTxXdr = await freighterModule.signTransaction(tx.toXDR(), {
           networkPassphrase: NETWORK_PASSPHRASE,
           network: "TESTNET"
         });
@@ -202,7 +193,7 @@
       } catch (error) {
         submitBtn.disabled = false;
         submitBtn.innerText = "Mint Soulbound Token";
-        showStatus("Transaction Error", error.message || "Nabigo ang pag-execute ng smart contract.", "error");
+        showStatus("Transaction Error", error.message || "Nabigo ang pag-execute.", "error");
       }
     });
 
