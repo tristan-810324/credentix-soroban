@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CredentiX | Enterprise Soulbound Certification</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: { bgDark: '#030712', cardDark: '#0b0f19', borderDark: '#1e293b' },
+          fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] }
+        }
+      }
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <!-- Stellar SDK at Freighter API CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/stellar-sdk/11.2.2/stellar-sdk.min.js"></script>
+  <script src="https://unpkg.com/@stellar/freighter-api@latest/dist/index.min.js"></script>
+  <script>
+    async function getFreighter() {
+      if (window.freighterApi) return window.freighterApi;
+      if (window.freighter) return window.freighter;
+      if (window.StellarFreighter) return window.StellarFreighter;
+      return null;
+    }
+  </script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .glass { background: rgba(11, 15, 25, 0.8); backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.08); }
+    .glow { background: radial-gradient(circle at 50% 0%, rgba(124, 58, 237, 0.15) 0%, transparent 70%); }
+  </style>
+</head>
+<body class="bg-bgDark text-slate-100 min-h-screen flex flex-col justify-between selection:bg-purple-600 selection:text-white">
+
+  <div class="fixed inset-0 pointer-events-none overflow-hidden">
+    <div class="absolute top-0 left-1/4 w-[600px] h-[600px] glow rounded-full blur-3xl opacity-70"></div>
+  </div>
+
+  <header class="w-full py-4 px-6 md:px-12 flex justify-between items-center border-b border-white/5 backdrop-blur-xl bg-bgDark/70 sticky top-0 z-50">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-purple-600/20">🎓</div>
+      <div>
+        <span class="text-sm font-extrabold tracking-tight text-white">CredentiX Protocol</span>
+        <span class="block text-[10px] font-semibold text-purple-400 uppercase tracking-widest">Soulbound Token Engine</span>
+      </div>
+    </div>
+    <button id="walletBtn" class="px-4 py-2.5 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white transition-all shadow-lg shadow-purple-600/20 flex items-center gap-2">
+      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+      <span id="walletText">Connect Freighter</span>
+    </button>
+  </header>
+
+  <main class="flex-grow flex items-center justify-center px-4 py-12 relative z-10">
+    <div id="card" class="w-full max-w-md p-8 rounded-3xl glass shadow-2xl">
+      <div class="mb-6">
+        <span class="px-3 py-1 mb-3 inline-block rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-[11px] font-semibold">Stellar Testnet Live</span>
+        <h1 class="text-2xl font-extrabold text-white tracking-tight mb-1">Mint SBT Credential</h1>
+        <p class="text-slate-400 text-xs">Connect your real Freighter wallet to issue verifiable on-chain academic records.</p>
+      </div>
+
+      <form id="certForm" class="space-y-4">
+        <div>
+          <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Student Wallet Address</label>
+          <input type="text" id="walletInput" placeholder="Connect wallet first..." class="w-full px-4 py-3 rounded-xl bg-black/50 border border-white/5 text-xs mono text-slate-300 focus:outline-none" readonly />
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Exam Score (0 - 100)</label>
+          <input type="number" id="scoreInput" min="0" max="100" placeholder="e.g. 95" required class="w-full px-4 py-3 rounded-xl bg-black/50 border border-white/5 text-sm mono text-white focus:outline-none focus:border-purple-500" />
+        </div>
+        <button type="submit" id="submitBtn" class="w-full py-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white transition-all shadow-xl shadow-purple-600/20">
+          Mint Soulbound Token
+        </button>
+      </form>
+
+      <div id="statusBox" class="mt-5 hidden p-4 rounded-xl text-xs border">
+        <p id="statusTitle" class="font-bold uppercase mb-1"></p>
+        <p id="statusDesc" class="mono text-[11px] opacity-90 break-all"></p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="py-4 text-center text-[11px] text-slate-500 border-t border-white/5">
+    CredentiX DApp · Built for Stellar Soroban Yellow Belt
+  </footer>
+
+  <script>
+    gsap.from("#card", { duration: 0.8, y: 20, opacity: 0, ease: "power3.out" });
+
+    const walletBtn = document.getElementById('walletBtn');
+    const walletText = document.getElementById('walletText');
+    const walletInput = document.getElementById('walletInput');
+    const certForm = document.getElementById('certForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const statusBox = document.getElementById('statusBox');
+    const statusTitle = document.getElementById('statusTitle');
+    const statusDesc = document.getElementById('statusDesc');
+
+    let userPublicKey = null;
+
+    walletBtn.addEventListener('click', async () => {
+      try {
+        walletText.innerText = "Connecting...";
+        const freighter = await getFreighter();
+        
+        if (!freighter) {
+          throw new Error("Freighter extension not detected. Please install or unlock Freighter.");
+        }
+
+        const isConnected = await freighter.isConnected();
+        if (!isConnected) {
+          await freighter.requestAccess();
+        }
+
+        userPublicKey = await freighter.getAddress();
+        
+        if (userPublicKey) {
+          walletInput.value = userPublicKey;
+          walletText.innerText = "Connected 🟢";
+          walletBtn.classList.replace('bg-purple-600', 'bg-slate-800');
+          showStatus("Wallet Connected", `Connected to: ${userPublicKey.substring(0, 6)}...${userPublicKey.substring(userPublicKey.length - 4)}`, "success");
+        } else {
+          throw new Error("No public key returned from wallet.");
+        }
+      } catch (error) {
+        walletText.innerText = "Connect Freighter";
+        showStatus("Connection Failed", error.message || "User rejected connection request.", "error");
+      }
+    });
+
+    const CONTRACT_ID = "CCRTH6FEEOKFPUPEURQLBD4MUUSRHRCGJXDGB5LBLRIQXUPVYPHYXQ7D"; //
+    const NETWORK_PASSPHRASE = "Test SDF Network ; September 2015";
+    const RPC_URL = "https://soroban-testnet.stellar.org";
+
+    certForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!userPublicKey) {
+        showStatus("Wallet Error", "Error 1 (Unauthorized): Please connect your Freighter wallet first.", "error");
+        return;
+      }
+      
+      const score = parseInt(document.getElementById('scoreInput').value);
+      if (isNaN(score) || score < 0 || score > 100) {
+        showStatus("Validation Error", "Error 2 (InvalidScore): Score must be between 0 and 100.", "error");
+        return;
+      }
+
+      try {
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Signing & Submitting to Testnet...";
+        showStatus("Transaction Pending", "Pumapasok na sa Soroban Testnet ledger ang iyong transaksyon...", "pending");
+
+        const server = new StellarSdk.SorobanRpc.Server(RPC_URL);
+        const sourceAccount = await server.getAccount(userPublicKey);
+        
+        const contract = new StellarSdk.Contract(CONTRACT_ID);
+        let tx = new StellarSdk.TransactionBuilder(sourceAccount, {
+            fee: StellarSdk.BASE_FEE,
+            networkPassphrase: NETWORK_PASSPHRASE
+        })
+        .addOperation(contract.call(
+            "mint_credential",
+            StellarSdk.xdr.ScVal.scvAddress(StellarSdk.Address.fromString(userPublicKey)),
+            StellarSdk.xdr.ScVal.scvAddress(StellarSdk.Address.fromString(userPublicKey)),
+            StellarSdk.xdr.ScVal.scvU32(score)
+        ))
+        .setTimeout(30)
+        .build();
+
+        const freighter = await getFreighter();
+        const signedTxXdr = await freighter.signTransaction(tx.toXDR(), {
+          networkPassphrase: NETWORK_PASSPHRASE,
+          network: "TESTNET"
+        });
+
+        const rawTx = StellarSdk.TransactionBuilder.fromXDR(signedTxXdr, NETWORK_PASSPHRASE);
+        const response = await server.sendTransaction(rawTx);
+
+        submitBtn.disabled = false;
+        submitBtn.innerText = "Mint Soulbound Token";
+
+        if (response.status === "PENDING" || response.status === "SUCCESS") {
+          let grade = score >= 90 ? "A_EXCELLENT" : (score >= 75 ? "B_CREDIT" : "C_PASS");
+          showStatus("Success 🎉", `Hash: ${response.hash} | Grade: ${grade} | Verified on Ledger!`, "success");
+        } else {
+          throw new Error("Transaction failed on ledger.");
+        }
+
+      } catch (error) {
+        submitBtn.disabled = false;
+        submitBtn.innerText = "Mint Soulbound Token";
+        showStatus("Transaction Error", error.message || "Nabigo ang pag-execute ng smart contract.", "error");
+      }
+    });
+
+    function showStatus(title, desc, type) {
+      statusBox.className = "mt-5 p-4 rounded-xl text-xs border block ";
+      if (type === 'success') statusBox.classList.add('bg-emerald-950/40', 'border-emerald-800', 'text-emerald-300');
+      else if (type === 'error') statusBox.classList.add('bg-rose-950/40', 'border-rose-800', 'text-rose-300');
+      else statusBox.classList.add('bg-blue-950/40', 'border-blue-800', 'text-blue-300');
+
+      statusTitle.innerText = title;
+      statusDesc.innerText = desc;
+      gsap.from(statusBox, { opacity: 0, y: 5, duration: 0.3 });
+    }
+  </script>
+</body>
+</html>
