@@ -26,6 +26,14 @@
       if (window.freighterApi) return window.freighterApi;
       if (window.freighter) return window.freighter;
       if (window.StellarFreighter) return window.StellarFreighter;
+      
+      // Pinatibay na hintay para masigurong ma-detect ang extension
+      for (let i = 0; i < 15; i++) {
+        if (window.freighterApi) return window.freighterApi;
+        if (window.freighter) return window.freighter;
+        if (window.StellarFreighter) return window.StellarFreighter;
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
       return null;
     }
   </script>
